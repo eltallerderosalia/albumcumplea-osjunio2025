@@ -119,6 +119,7 @@
             margin: 0 10px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
             transition: transform 0.3s ease;
+            cursor: pointer;
         }
         
         .carousel-item:hover {
@@ -396,6 +397,151 @@
                 min-width: 250px;
             }
         }
+        
+        /* Estilos para el modal del carrusel pop-up */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            overflow: hidden;
+        }
+        
+        .modal-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-carousel {
+            position: relative;
+            width: 90%;
+            height: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-item {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+            position: relative;
+        }
+        
+        .modal-item.active {
+            display: block;
+        }
+        
+        .modal-item img, 
+        .modal-item video {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+        
+        .modal-caption {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-controls {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            z-index: 10;
+        }
+        
+        .modal-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.7);
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            z-index: 10;
+            transition: color 0.3s;
+        }
+        
+        .close-modal:hover {
+            color: #ff6b6b;
+        }
+        
+        .modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.7);
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-nav:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .modal-prev {
+            left: 30px;
+        }
+        
+        .modal-next {
+            right: 30px;
+        }
+        
+        /* Clase para evitar scroll cuando el modal está abierto */
+        .no-scroll {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -530,6 +676,22 @@
     <footer style="text-align: center; padding: 30px; background: rgba(0,0,0,0.8); color: white;">
         <p>© 2025 - Álbum del Cumpleaños de Junio | Todos los recuerdos guardados con cariño</p>
     </footer>
+    
+    <!-- Modal para el carrusel pop-up -->
+    <div class="modal" id="galleryModal">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <div class="modal-content">
+            <div class="modal-carousel">
+                <!-- Los elementos del modal se generarán con JavaScript -->
+            </div>
+            <button class="modal-nav modal-prev" id="modalPrev"><i class="fas fa-chevron-left"></i></button>
+            <button class="modal-nav modal-next" id="modalNext"><i class="fas fa-chevron-right"></i></button>
+            <div class="modal-controls">
+                <button class="modal-btn" id="playPauseBtn"><i class="fas fa-play"></i></button>
+                <button class="modal-btn" id="muteBtn"><i class="fas fa-volume-up"></i></button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Datos de las secciones con imágenes y videos
@@ -663,6 +825,12 @@
             }
         ];
 
+        // Variables globales para el modal
+        let currentModalSection = null;
+        let currentModalIndex = 0;
+        let modalItems = [];
+        let currentVideo = null;
+
         // Inicializar todos los carruseles
         document.addEventListener('DOMContentLoaded', () => {
             sections.forEach(section => {
@@ -674,6 +842,9 @@
             
             // Pausar videos cuando no están visibles
             initVideoObserver();
+            
+            // Inicializar el modal
+            initModal();
         });
 
         // Función para inicializar un carrusel
@@ -688,6 +859,8 @@
                 const item = document.createElement('div');
                 item.className = 'carousel-item';
                 item.dataset.type = media.type;
+                item.dataset.section = sectionData.id;
+                item.dataset.index = index;
                 
                 let mediaElement;
                 if (media.type === 'image') {
@@ -835,6 +1008,11 @@
                         });
                     }
                 }
+                
+                // Event listener para abrir el modal
+                item.addEventListener('click', () => {
+                    openModal(item.dataset.section, parseInt(item.dataset.index));
+                });
             });
             
             // Inicializar
@@ -893,6 +1071,219 @@
                 }
                 isPlaying = !isPlaying;
             });
+        }
+
+        // Función para inicializar el modal
+        function initModal() {
+            const modal = document.getElementById('galleryModal');
+            const closeBtn = document.getElementById('closeModal');
+            const prevBtn = document.getElementById('modalPrev');
+            const nextBtn = document.getElementById('modalNext');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const muteBtn = document.getElementById('muteBtn');
+            
+            // Event listeners
+            closeBtn.addEventListener('click', closeModal);
+            prevBtn.addEventListener('click', showPrevModalItem);
+            nextBtn.addEventListener('click', showNextModalItem);
+            
+            // Evento para teclado
+            document.addEventListener('keydown', (e) => {
+                if (modal.style.display === 'block') {
+                    if (e.key === 'ArrowLeft') {
+                        showPrevModalItem();
+                    } else if (e.key === 'ArrowRight') {
+                        showNextModalItem();
+                    } else if (e.key === 'Escape') {
+                        closeModal();
+                    }
+                }
+            });
+            
+            // Evento para controles de video
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            muteBtn.addEventListener('click', toggleMute);
+        }
+        
+        // Abrir el modal
+        function openModal(sectionId, index) {
+            const modal = document.getElementById('galleryModal');
+            const modalCarousel = document.querySelector('.modal-carousel');
+            
+            // Limpiar el modal
+            modalCarousel.innerHTML = '';
+            
+            // Encontrar la sección correspondiente
+            currentModalSection = sections.find(section => section.id === sectionId);
+            currentModalIndex = index;
+            modalItems = [];
+            
+            // Crear elementos del modal
+            currentModalSection.media.forEach((media, idx) => {
+                const item = document.createElement('div');
+                item.className = 'modal-item';
+                item.dataset.index = idx;
+                
+                let mediaElement;
+                if (media.type === 'image') {
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = media.src;
+                    mediaElement.alt = media.caption;
+                } else if (media.type === 'video') {
+                    mediaElement = document.createElement('video');
+                    mediaElement.controls = false;
+                    mediaElement.autoplay = false;
+                    mediaElement.loop = false;
+                    mediaElement.playsInline = true;
+                    const source = document.createElement('source');
+                    source.src = media.src;
+                    source.type = 'video/mp4';
+                    mediaElement.appendChild(source);
+                }
+                
+                item.appendChild(mediaElement);
+                
+                const caption = document.createElement('div');
+                caption.className = 'modal-caption';
+                caption.textContent = media.caption;
+                item.appendChild(caption);
+                
+                modalCarousel.appendChild(item);
+                modalItems.push(item);
+            });
+            
+            // Mostrar el elemento seleccionado
+            showModalItem(currentModalIndex);
+            
+            // Mostrar el modal
+            modal.style.display = 'block';
+            document.body.classList.add('no-scroll');
+            
+            // Pausar la música de fondo
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            backgroundMusic.pause();
+        }
+        
+        // Cerrar el modal
+        function closeModal() {
+            const modal = document.getElementById('galleryModal');
+            modal.style.display = 'none';
+            document.body.classList.remove('no-scroll');
+            
+            // Pausar el video actual si existe
+            if (currentVideo) {
+                currentVideo.pause();
+                currentVideo = null;
+            }
+            
+            // Reanudar la música de fondo si estaba sonando
+            const musicPlayer = document.getElementById('musicPlayer');
+            if (musicPlayer.classList.contains('playing')) {
+                const backgroundMusic = document.getElementById('backgroundMusic');
+                backgroundMusic.play();
+            }
+        }
+        
+        // Mostrar un elemento específico en el modal
+        function showModalItem(index) {
+            // Ocultar todos los elementos
+            modalItems.forEach(item => {
+                item.classList.remove('active');
+                
+                // Pausar videos
+                const video = item.querySelector('video');
+                if (video) {
+                    video.pause();
+                    video.currentTime = 0;
+                }
+            });
+            
+            // Mostrar el elemento actual
+            modalItems[index].classList.add('active');
+            
+            // Manejar videos
+            const currentItem = modalItems[index];
+            if (currentItem.querySelector('video')) {
+                currentVideo = currentItem.querySelector('video');
+                currentVideo.play();
+                
+                // Actualizar botón de play/pause
+                const playPauseBtn = document.getElementById('playPauseBtn');
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                
+                // Actualizar botón de mute
+                const muteBtn = document.getElementById('muteBtn');
+                muteBtn.innerHTML = currentVideo.muted ? 
+                    '<i class="fas fa-volume-mute"></i>' : 
+                    '<i class="fas fa-volume-up"></i>';
+            } else {
+                currentVideo = null;
+            }
+            
+            // Actualizar controles de video
+            updateVideoControls();
+        }
+        
+        // Mostrar el elemento anterior en el modal
+        function showPrevModalItem() {
+            if (currentModalIndex > 0) {
+                currentModalIndex--;
+            } else {
+                currentModalIndex = modalItems.length - 1;
+            }
+            showModalItem(currentModalIndex);
+        }
+        
+        // Mostrar el siguiente elemento en el modal
+        function showNextModalItem() {
+            if (currentModalIndex < modalItems.length - 1) {
+                currentModalIndex++;
+            } else {
+                currentModalIndex = 0;
+            }
+            showModalItem(currentModalIndex);
+        }
+        
+        // Actualizar controles de video
+        function updateVideoControls() {
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const muteBtn = document.getElementById('muteBtn');
+            
+            if (currentVideo) {
+                playPauseBtn.style.display = 'block';
+                muteBtn.style.display = 'block';
+                
+                playPauseBtn.innerHTML = currentVideo.paused ? 
+                    '<i class="fas fa-play"></i>' : 
+                    '<i class="fas fa-pause"></i>';
+                
+                muteBtn.innerHTML = currentVideo.muted ? 
+                    '<i class="fas fa-volume-mute"></i>' : 
+                    '<i class="fas fa-volume-up"></i>';
+            } else {
+                playPauseBtn.style.display = 'none';
+                muteBtn.style.display = 'none';
+            }
+        }
+        
+        // Alternar reproducción/pausa del video
+        function togglePlayPause() {
+            if (currentVideo) {
+                if (currentVideo.paused) {
+                    currentVideo.play();
+                } else {
+                    currentVideo.pause();
+                }
+                updateVideoControls();
+            }
+        }
+        
+        // Alternar silencio del video
+        function toggleMute() {
+            if (currentVideo) {
+                currentVideo.muted = !currentVideo.muted;
+                updateVideoControls();
+            }
         }
     </script>
 </body>
